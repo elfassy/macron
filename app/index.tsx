@@ -7,13 +7,29 @@ import loadTheme from './utils/theme';
 
 const AppContainer = process.env.PLAIN_HMR ? Fragment : ReactHotAppContainer;
 
-document.addEventListener('DOMContentLoaded', () => {
+console.log('Index.tsx loaded');
+
+const renderApp = () => {
+  console.log('Rendering app...');
   loadTheme();
+
+  const root = document.getElementById('root');
+  if (!root) {
+    console.error('Root element not found!');
+    return;
+  }
 
   render(
     <AppContainer>
       <App />
     </AppContainer>,
-    document.getElementById('root')
-  )
-});
+    root
+  );
+  console.log('App rendered');
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', renderApp);
+} else {
+  renderApp();
+}

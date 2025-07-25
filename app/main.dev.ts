@@ -8,13 +8,12 @@
  * When running `yarn build` or `yarn build-main`, this file is compiled to
  * `./app/main.prod.js` using webpack. This gives us some performance wins.
  */
-import path from 'path';
 import { app, BrowserWindow, nativeTheme, TouchBar } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import store from './utils/store';
-import { fire } from './utils/events';
+import Store from 'electron-store';
 
+const store = new Store();
 store.set('theme', nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
 
 export default class AppUpdater {
@@ -65,14 +64,11 @@ const createWindow = async () => {
     width: 750,
     titleBarStyle: 'default',
     fullscreenable: false,
-    webPreferences:
-      process.env.NODE_ENV === 'development' || process.env.E2E_BUILD === 'true'
-        ? {
-            nodeIntegration: true
-          }
-        : {
-            preload: path.join(__dirname, 'dist/renderer.prod.js')
-          }
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false
+    }
   });
 
   mainWindow.loadURL(`file://${__dirname}/app.html`);
@@ -100,7 +96,11 @@ const createWindow = async () => {
   const newJobButton = new TouchBar.TouchBarButton({
     label: 'Create Job',
     backgroundColor: '#377ed5',
-    click: () => fire('touchbar-create')
+    click: () => {
+      if (mainWindow) {
+        mainWindow.webContents.send('touchbar-create');
+      }
+    }
   });
 
   const touchBar = new TouchBar({

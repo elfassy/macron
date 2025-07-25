@@ -1,4 +1,3 @@
-import { app as electron, remote } from 'electron';
 import pkg from '../package.json';
 
 export const appPath = dir => {
@@ -8,6 +7,6 @@ export const appPath = dir => {
   );
 };
 
-export const app = () => electron || remote.app;
+export const app = () => null; // Electron app not available in renderer
 
 export const version = () => pkg.version;

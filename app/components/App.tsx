@@ -5,7 +5,6 @@ import { message, Modal, Spin } from 'antd';
 import Placeholder from './Placeholder';
 import Sidebar from './Sidebar';
 import Editor from './Editor';
-import { off, on } from '../utils/events';
 
 window.api = null;
 
@@ -22,27 +21,35 @@ function App() {
 
   const connect = (selected = null) => {
     return new Promise((resolve, reject) => {
-      crontab.load((err, _api) => {
-        if (err) {
-          message.error(err);
+      try {
+        crontab.load((err, _api) => {
+          if (err) {
+            console.error('Error loading crontab:', err);
+            message.error(`Failed to load crontab: ${err.message || err}`);
+            setLoaded(true); // Still set loaded to true to show UI
+            return reject(err);
+          }
 
-          return reject(err);
-        }
+          window.api = _api;
 
-        window.api = _api;
+          const js = api.jobs().map(j => makeJob(j, v4()));
 
-        const js = api.jobs().map(j => makeJob(j, v4()));
+          if (selected) {
+            const active = js.find(j => j.name === selected.name);
+            setJob(active);
+          }
 
-        if (selected) {
-          const active = js.find(j => j.name === selected.name);
-          setJob(active);
-        }
+          setJobs(js);
+          setLoaded(true);
 
-        setJobs(js);
-        setLoaded(true);
-
-        return resolve(js);
-      });
+          return resolve(js);
+        });
+      } catch (error) {
+        console.error('Error in connect:', error);
+        message.error(`Failed to connect: ${error.message || error}`);
+        setLoaded(true); // Still set loaded to true to show UI
+        reject(error);
+      }
     });
   };
 
@@ -105,11 +112,21 @@ function App() {
   };
 
   useEffect(() => {
-    connect();
+    connect().catch(err => {
+      console.error('Failed to connect on mount:', err);
+    });
 
-    on('touchbar-create', onCreate);
+    // Listen for IPC messages from main process
+    if (window.require) {
+      const { ipcRenderer } = window.require('electron');
+      const handleTouchbarCreate = () => onCreate();
+      ipcRenderer.on('touchbar-create', handleTouchbarCreate);
 
-    return () => off('touchbar-create', onCreate);
+      return () => {
+        ipcRenderer.removeListener('touchbar-create', handleTouchbarCreate);
+      };
+    }
+    return undefined;
   }, []);
 
   return (

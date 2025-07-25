@@ -1,9 +1,40 @@
-import { app } from './config';
+// Simple event emitter for renderer process
+class EventEmitter {
+  constructor() {
+    this.events = {};
+  }
 
-export const fire = name => app().emit(name);
+  on(event, callback) {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(callback);
+  }
 
-export const off = (name, callback) => app().off(name, callback);
+  off(event, callback) {
+    if (this.events[event]) {
+      this.events[event] = this.events[event].filter(cb => cb !== callback);
+    }
+  }
 
-export const on = (name, callback) => app().on(name, callback);
+  emit(event, ...args) {
+    if (this.events[event]) {
+      this.events[event].forEach(callback => callback(...args));
+    }
+  }
 
-export const once = (name, callback) => app().once(name, callback);
+  once(event, callback) {
+    const onceWrapper = (...args) => {
+      callback(...args);
+      this.off(event, onceWrapper);
+    };
+    this.on(event, onceWrapper);
+  }
+}
+
+const emitter = new EventEmitter();
+
+export const fire = name => emitter.emit(name);
+export const off = (name, callback) => emitter.off(name, callback);
+export const on = (name, callback) => emitter.on(name, callback);
+export const once = (name, callback) => emitter.once(name, callback);
